@@ -30,9 +30,13 @@ search_e:
         ; Check high-part of HATABS address
         lda     1+(HATABS & $FF00),y
         cmp     #>$C000
-        lda     #<error_msg
-        bcc     print_msg       ; Don't install over RAM based handler
+        bcs     install_ok
 
+        ; Don't install over RAM based handler
+        lda     #<error_msg
+        jmp     print_msg
+
+install_ok:
         ; copy EDITOR handler to new HATABS
         ldx     #$0F
 copy_e: lda     EDITRV,x
@@ -85,10 +89,17 @@ copy_e: lda     EDITRV,x
         ; And address of new MEMLO
         clc
         adc     #(handler_end - handler_jdos)
-        bcc     :+
-        inx
-:       sta     sMEMLOL+1
-        stx     sMEMLOH+1
+        sta     sMEMLOL+1
+
+        ; If we adjusted X it means that in the reload handler
+        ; we also need to increment X, so keeps the "INX" in the code
+        bcs     :+
+        cpx     pntr+1
+        bne     :+
+        ; We did not increment X, replace the INX with a NOP.
+        lda     #234    ; NOP
+        sta     sMEMLOH
+:
 
         ; Copy our handler code to new position
 copy_handler:
@@ -99,8 +110,8 @@ cloop:  lda     handler_hatab,y
         cpy     #$FF
         bne     cloop
 
-        ; Store new MEMLO / DOSINI
-        jsr     sMEMLOL
+        ; Store new MEMLO / HATAB
+        jsr     load_hatab
 
         ; Reopen E:
         ldy     #CLOSE
@@ -277,16 +288,22 @@ no_cursor:
 handler_jdos:
         jsr     $FFFF
 
-sMEMLOL:lda     #$00
-        sta     MEMLO
-sMEMLOH:lda     #$00
-        sta     MEMLO+1
+        ; Load HATABS value:
+load_hatab:
+
 hatabs_l:
         lda     #$00
         sta     HATABS+1
 hatabs_h:
-        lda     #$00
-        sta     HATABS+2
+        ldx     #$00
+        stx     HATABS+2
+
+        ; Loads MEMLO value
+sMEMLOL:lda     #$00
+sMEMLOH:inx     ; This is replaced by a NOP if possible
+
+        sta     MEMLO
+        stx     MEMLO+1
         rts
 
 ; End of resident handler
