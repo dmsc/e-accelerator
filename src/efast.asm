@@ -165,14 +165,14 @@ handler_hatab = handler_put - 16
 
         ; Handler PUT function
 handler_put:
+        ; Don't handle in graphics modes
+        ldx     DINDEX
+        bne     jhand
+
         ; Don't handle wrap at last column!
         ldx     COLCRS
         cpx     RMARGN
         bcs     jhand
-
-        ; And don't handle in graphics modes
-        ldx     DINDEX
-        bne     jhand
 
         ; Check for control character:
         ;  $1B, $1C, $1D, $1E, $1F, $7D, $7E, $7F
