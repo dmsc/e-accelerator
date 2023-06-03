@@ -165,6 +165,9 @@ handler_hatab = handler_start - 16
 
 handler_start:
 
+jhandy: tya
+jhand:  jmp     $FFFF
+
         ; Handler PUT function
 handler_put:
         ; Don't handle in graphics modes
@@ -180,30 +183,19 @@ handler_put:
         ;  $1B, $1C, $1D, $1E, $1F, $7D, $7E, $7F
         ;  $9B, $9C, $9D, $9E, $9F, $FD, $FE, $FF
         ;
-        ; To ignore high bit, store in X the shifted character
-        asl
+        ; Store original in Y and shift A to remove high bit:
         tay
-        ; Restore full value in A
-        ror
-
-        cpy     #2*ATCLR ; chars >= $7D are special chars
-        bcs     jhand
-        cpy     #$C0     ; chars >= $60 don't need conversion
-        bcs     conv_ok
-        cpy     #$40     ; chars >= $20 needs -$20 (upper case and numbers)
-        bcs     normal_char
-        cpy     #2*ATESC ; chars <= $1B needs +$40 (control chars)
-        bcc     ctrl_char
-
-        ; Special character jump to old handler
-jhand:  jmp     $FFFF
-
-        ; Convert ATASCII to screen codes
-ctrl_char:
-        adc     #$61    ; Chars from $00 to $1F, add $40 (+$21, subtracted bellow)
-normal_char:
-        sbc     #$20    ; Chars from $20 to $5F, subtract $20
+        asl
+        cmp     #2*ATCLR
+        bcs     jhandy  ; Skip $7D-$7F and $FD-$FF
+        sbc     #$3F
+        bpl     conv_ok ; $20-$5F and $A0-$DF are ok
+        cmp     #$C0 + 2 * ATESC - 1
+        bcs     jhandy  ; Skip $1B-$1F and $9B-$9F
+        eor     #$40
 conv_ok:
+        cpy     #$80    ; Restore sign
+        ror
 
         ; Check break and stop on START/STOP flag
 wait_stop:
