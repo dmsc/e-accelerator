@@ -130,11 +130,11 @@ call_cio_str:
         ldx     #>error_msg
         sta     ICBAL
         stx     ICBAH
-        lda     #$FF
-        sta     ICBLL
 call_cio:
         sty     ICCOM
-        ldx     #$00
+        ldx     #$01
+        stx     ICBLH
+        dex
         jmp     CIOV
 
         .assert (>install_msg) = (>error_msg), error, "messages must be in the same page"
