@@ -103,7 +103,7 @@ copy_e: lda     EDITRV,x
 
         ; Copy our handler code to new position
 copy_handler:
-        ldy     #(handler_end - handler_put + 15)
+        ldy     #(handler_end - handler_start + 15)
 cloop:  lda     handler_hatab,y
         sta     (pntr),y
         dey
@@ -156,12 +156,14 @@ dev_e:
 
         ; File HEADER
         .segment "HANDHDR"
-        .word   handler_put
+        .word   handler_start
         .word   handler_end - 1
         .segment "HANDLER"
 
         ; Handler device table
-handler_hatab = handler_put - 16
+handler_hatab = handler_start - 16
+
+handler_start:
 
         ; Handler PUT function
 handler_put:
