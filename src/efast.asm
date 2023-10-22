@@ -65,37 +65,37 @@ copy_e: lda     EDITRV,x
         ; Patch new HATABS, stored in current MEMLO
         lda     MEMLO
         ldx     MEMLO+1
-        sta     hatabs_l+1
-        stx     hatabs_h+1
         sta     pntr
         stx     pntr+1
 
-        ; And store our new PUT
+        ; Store new DOSINI handler address
+        sta     DOSINI
+        stx     DOSINI+1
+
+        ; Address of new PUT is at start of handler
         ; (note, C is set here, so adds 1 less)
-        adc     #(handler_put-1 - handler_hatab) - 1
+        adc     #(handler_put - 1 - handler_start - 1)
         bcc     :+
         inx
 :       sta     handler_hatab+6
         stx     handler_hatab+7
 
-        ; Store new DOSINI handler address
-        sec
-        adc     #(handler_jdos - handler_put)
+        ; And store our new handler table
+        clc
+        adc     #(handler_hatab - handler_put + 1)
         bcc     :+
         inx
-:       sta     DOSINI
-        stx     DOSINI+1
+:       sta     hatabs_l+1
+        stx     hatabs_h+1
 
         ; And address of new MEMLO
         clc
-        adc     #(handler_end - handler_jdos)
+        adc     #(handler_end - handler_hatab)
         sta     sMEMLOL+1
 
         ; If we adjusted X it means that in the reload handler
         ; we also need to increment X, so keeps the "INX" in the code
         bcs     :+
-        cpx     pntr+1
-        bne     :+
         ; We did not increment X, replace the INX with a NOP.
         lda     #234    ; NOP
         sta     sMEMLOH
@@ -103,11 +103,10 @@ copy_e: lda     EDITRV,x
 
         ; Copy our handler code to new position
 copy_handler:
-        ldy     #(handler_end - handler_hatab - 1)
-cloop:  lda     handler_hatab,y
-        sta     (pntr),y
+        ldy     #(handler_end - handler_start)
+cloop:  lda     handler_start-1,y
         dey
-        cpy     #$FF
+        sta     (pntr),y
         bne     cloop
 
         ; Store new MEMLO / HATAB
@@ -152,20 +151,29 @@ error_msg:
         ;
         ;       Installed handler
         ;
-
-        ; File HEADER
-        .segment "HANDHDR"
-        .word   handler_start
-        .word   handler_end - 1
-        .segment "HANDLER"
-
-        ; Handler device table
-handler_hatab = handler_start - 16
-
 handler_start:
 
-jhandy: tya
-jhand:  jmp     $FFFF
+; Calls original DOSINI, adjust MEMLO and reinstall E: handler
+handler_jdos:
+        jsr     $FFFF
+
+        ; Load HATABS value:
+load_hatab:
+
+hatabs_l:
+        lda     #$00
+        sta     HATABS+1
+hatabs_h:
+        ldx     #$00
+        stx     HATABS+2
+
+        ; Loads MEMLO value
+sMEMLOL:lda     #$00
+sMEMLOH:inx     ; This is replaced by a NOP if possible
+
+        sta     MEMLO
+        stx     MEMLO+1
+        rts
 
         ; Handler PUT function
 handler_put:
@@ -276,29 +284,14 @@ no_cursor:
         iny
         rts
 
-; Calls original DOSINI, adjust MEMLO and reinstall E: handler
-handler_jdos:
-        jsr     $FFFF
+; Calls original E: put
+jhandy: tya
+jhand:  jmp     $FFFF
 
-        ; Load HATABS value:
-load_hatab:
-
-hatabs_l:
-        lda     #$00
-        sta     HATABS+1
-hatabs_h:
-        ldx     #$00
-        stx     HATABS+2
-
-        ; Loads MEMLO value
-sMEMLOL:lda     #$00
-sMEMLOH:inx     ; This is replaced by a NOP if possible
-
-        sta     MEMLO
-        stx     MEMLO+1
-        rts
+        ; Handler device table
+handler_hatab:
 
 ; End of resident handler
-handler_end:
+handler_end = handler_hatab + 16
 
 ; vi:syntax=asm_ca65
