@@ -265,10 +265,9 @@ skip_adr:
 no_cursor:
 
         ; Update column
-        ldx     COLCRS
-        inx
-        stx     COLCRS
-        stx     OLDCOL
+        inc     COLCRS
+        lda     COLCRS
+        sta     OLDCOL
         inc     LOGCOL
 
         ; Reset ESC flag
