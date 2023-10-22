@@ -103,7 +103,7 @@ copy_e: lda     EDITRV,x
 
         ; Copy our handler code to new position
 copy_handler:
-        ldy     #(handler_end - handler_start + 15)
+        ldy     #(handler_end - handler_hatab - 1)
 cloop:  lda     handler_hatab,y
         sta     (pntr),y
         dey
@@ -140,14 +140,13 @@ call_cio:
         .assert (>install_msg) = (>error_msg), error, "messages must be in the same page"
         .assert (>install_msg) = (>dev_e), error, "e: must be in the same page"
 
-install_msg:
+dev_e:
+install_msg:    ; NOTE: message must begin with "E:"
         .byte   "E:Fast Installed", $9B
 
 error_msg:
         .byte   "Can't install", $FD, $9B
 
-dev_e:
-        .byte   "E:", $9B
 
         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
         ;
